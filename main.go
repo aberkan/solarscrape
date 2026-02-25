@@ -33,12 +33,22 @@ type response struct {
 func main() {
 	token := flag.String("token", "", "Bearer token (required). See README for how to get it from the browser.")
 	month := flag.String("month", "", "Month in YYYY-MM format (e.g. 2026-01)")
+	year := flag.String("year", "", "Year in YYYY format (e.g. 2026). Use instead of -month for full year.")
 	flag.Parse()
 
-	if *token == "" || *month == "" {
-		fmt.Fprintln(os.Stderr, "Usage: solarscrape -token <bearer-token> -month YYYY-MM")
+	if *token == "" {
+		fmt.Fprintln(os.Stderr, "Usage: solarscrape -token <bearer-token> (-month YYYY-MM | -year YYYY)")
 		fmt.Fprintln(os.Stderr, "Example: solarscrape -token abc123... -month 2026-01")
+		fmt.Fprintln(os.Stderr, "Example: solarscrape -token abc123... -year 2026")
 		flag.PrintDefaults()
+		os.Exit(1)
+	}
+	if *month != "" && *year != "" {
+		fmt.Fprintln(os.Stderr, "Use -month or -year, not both.")
+		os.Exit(1)
+	}
+	if *month == "" && *year == "" {
+		fmt.Fprintln(os.Stderr, "Provide -month YYYY-MM or -year YYYY.")
 		os.Exit(1)
 	}
 
@@ -48,23 +58,35 @@ func main() {
 		os.Exit(1)
 	}
 
-	start, err := time.ParseInLocation("2006-01", *month, loc)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "invalid month %q: use YYYY-MM (e.g. 2026-01)\n", *month)
-		os.Exit(1)
-	}
-
-	// Start: first day of month at 00:00:00
-	start = time.Date(start.Year(), start.Month(), 1, 0, 0, 0, 0, loc)
-
-	// End: today in that timezone, or last day of month — use whichever is earlier, up to 23:59:59
 	now := time.Now().In(loc)
-	endOfMonth := start.AddDate(0, 1, 0).Add(-time.Second)
-	var end time.Time
-	if now.Before(endOfMonth) {
-		end = time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, loc)
+	var start, end time.Time
+
+	if *month != "" {
+		start, err = time.ParseInLocation("2006-01", *month, loc)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "invalid month %q: use YYYY-MM (e.g. 2026-01)\n", *month)
+			os.Exit(1)
+		}
+		start = time.Date(start.Year(), start.Month(), 1, 0, 0, 0, 0, loc)
+		endOfRange := start.AddDate(0, 1, 0).Add(-time.Second)
+		if now.Before(endOfRange) {
+			end = time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, loc)
+		} else {
+			end = endOfRange
+		}
 	} else {
-		end = endOfMonth
+		start, err = time.ParseInLocation("2006", *year, loc)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "invalid year %q: use YYYY (e.g. 2026)\n", *year)
+			os.Exit(1)
+		}
+		start = time.Date(start.Year(), 1, 1, 0, 0, 0, 0, loc)
+		endOfRange := time.Date(start.Year(), 12, 31, 23, 59, 59, 0, loc)
+		if now.Before(endOfRange) {
+			end = time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, loc)
+		} else {
+			end = endOfRange
+		}
 	}
 
 	// API expects naive local time (no offset) when tz is set

@@ -1,6 +1,6 @@
 # Solar usage stats (Locus Energy)
 
-Fetches daily solar production (Wh) for a given month from the Locus Energy API and prints `Date` and `Wh_sum` for piping into other apps.
+Fetches daily solar production (Wh) for a given month or year from the Locus Energy API and prints `Date` and `Wh_sum` for piping into other apps.
 
 ## Build
 
@@ -15,15 +15,16 @@ This produces `solarscrape` on Unix/macOS and `solarscrape.exe` on Windows.
 ## Usage
 
 ```bash
-solarscrape -token <bearer-token> -month YYYY-MM
+solarscrape -token <bearer-token> (-month YYYY-MM | -year YYYY)
 ```
 
 On Windows use `solarscrape.exe` instead of `solarscrape`.
 
-Example:
+Examples:
 
 ```bash
 solarscrape -token your-token-here -month 2026-01
+solarscrape -token your-token-here -year 2026
 ```
 
 Output (tab-separated, one line per day):
@@ -35,7 +36,8 @@ Output (tab-separated, one line per day):
 ...
 ```
 
-- **Month**: `YYYY-MM` (e.g. `2026-01`). Data is returned from the first day of that month up to **today** (in America/Edmonton), or the end of the month if today is later.
+- **Month** (`-month`): `YYYY-MM` (e.g. `2026-01`). Data from the first day of that month up to **today** (in America/Edmonton), or the end of the month if today is later.
+- **Year** (`-year`): `YYYY` (e.g. `2026`). Use instead of `-month` to get the full year: Jan 1 up to today or Dec 31, whichever is earlier.
 - **Token**: Your API bearer token. Do not commit it; pass it on the command line or via env.
 
 ## How to get the bearer token from the browser
